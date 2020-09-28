@@ -1,0 +1,9 @@
+{
+  "name": "live-query",
+  "version": "1.0.0",
+  "description": "Parse Live Query demo app",
+  "main": "index.js",
+  "dependencies": {
+    "parse": "^2.16.0"
+  }
+}
