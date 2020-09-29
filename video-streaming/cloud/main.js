@@ -12,12 +12,23 @@ Parse.Cloud.afterSave('Video', ({ original, object, log }) => {
 
   (async () => {
     const tempDirUri = `/temp/${object.id}`;
-    const manifestFileUri = `${tempDirUri}/output.m3u8`;
+    const manifestFileName = 'output.m3u8';
+    const manifestFileUri = `${tempDirUri}/${manifestFileName}`;
     const inputFileUri = `${tempDirUri}/${object.get('input').name()}`;
 
     await fs.ensureDir(tempDirUri);
     const response = await fetch(object.get('input').url());
-    await fs.outputFile(inputFileUri, await response.buffer());
+    
+    let buffer;
+
+    await Promise.all([
+      fs.ensureDir(tempDirUri),
+      fetch(object.get('input').url())
+        .then(response => response.buffer())
+        .then(_buffer => buffer = _buffer)
+    ]);
+
+    await fs.outputFile(inputFileUri, buffer);
 
     ffmpeg(inputFileUri)
       .outputOptions([
@@ -33,9 +44,48 @@ Parse.Cloud.afterSave('Video', ({ original, object, log }) => {
         log.error(`An error occurred converting video ${object.id} : ${err.message}`);
       })
       .on('end', async () => {
-        log.info(`Converting finished for video ${object.id} !`);
+        try {
+          log.info(`Converting finished for video ${object.id} !`);
 
-        // fs.remove(tempDirUri);
+          const fileNames = await fs.readdir(tempDirUri);
+          const fileNamesMap = {};
+          await Promise.all(fileNames.map(async fileName => {
+            if (![manifestFileName, object.get('input').name()].includes(fileName)) {
+              const fileBuffer = await fs.readFile(`${tempDirUri}/${fileName}`);
+              const file = new Parse.File(fileName, [...fileBuffer]);
+              await file.save();
+              fileNamesMap[fileName] = file.name();
+              let hlsChunks = object.get('hlsChunks');
+              if (!hlsChunks) {
+                hlsChunks = [];
+              }
+              hlsChunks.push(file);
+              object.set('hlsChunks', hlsChunks);
+            }
+          }));
+
+          let manifestFileText = await fs.readFile(manifestFileUri, 'utf-8');
+          Object.keys(fileNamesMap).forEach(fileName => {
+            manifestFileText = manifestFileText.replace(fileName, fileNamesMap[fileName]);
+          });
+
+          const hlsManifest = new Parse.File(manifestFileName, [...Buffer.from(manifestFileText)]);
+          await hlsManifest.save();
+
+          object.set('hlsManifest', hlsManifest);
+          object.set('isReady', true);
+          await object.save(null, { useMasterKey: true });
+
+          log.info(`Converted file saved for video ${object.id} !`);
+        } catch (e) {
+          log.error(e.message);
+          throw e;
+        } finally {
+          fs.remove(tempDirUri);
+        }
       }).run();
-  })().catch(log.error);
+  })().catch(error => {
+    log.error(error.message);
+    throw error;
+  });
 });
