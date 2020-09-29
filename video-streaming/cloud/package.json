@@ -1,0 +1,9 @@
+{
+  "name": "cloud",
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.0.20",
+    "fluent-ffmpeg": "^2.1.2",
+    "fs-extra": "^9.0.1",
+    "node-fetch": "^2.6.1"
+  }
+}
