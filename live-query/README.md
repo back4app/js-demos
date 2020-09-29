@@ -5,3 +5,5 @@ This demo app shows the different events that Parse Live Query can fire and how 
 Learn more about this demo app at:
 - [Mastering Parse Live Query Article](https://blog.back4app.com/mastering-parse-live-queries/)
 - [Mastering Parse Live Query Video](https://youtu.be/bz6p9uhxx2I)
+
+Clone the database schema at [Live Query Demo Public Database on Back4App Hub](https://www.back4app.com/database/back4app/live-query-demo).
