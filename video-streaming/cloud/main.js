@@ -13,19 +13,13 @@ Parse.Cloud.afterSave('Video', ({ original, object, log }) => {
   (async () => {
     const tempDirUri = `/temp/${object.id}`;
     const manifestFileUri = `${tempDirUri}/output.m3u8`;
+    const inputFileUri = `${tempDirUri}/${object.get('input').name()}`;
 
-    let body;
-    log.info(object.get('input').url());
+    await fs.ensureDir(tempDirUri);
+    const response = await fetch(object.get('input').url());
+    await fs.outputFile(inputFileUri, await response.buffer());
 
-    await Promise.all([
-      fs.ensureDir(tempDirUri),
-      fetch(object.get('input').url()).then(response => {
-        log.info(response.status);
-        body = response.body;
-      })
-    ]);
-
-    ffmpeg(body)
+    ffmpeg(inputFileUri)
       .outputOptions([
         '-profile:v baseline',
         '-level 3.0',
@@ -43,5 +37,5 @@ Parse.Cloud.afterSave('Video', ({ original, object, log }) => {
 
         // fs.remove(tempDirUri);
       }).run();
-  })();
+  })().catch(log.error);
 });
