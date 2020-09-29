@@ -52,7 +52,7 @@ Parse.Cloud.afterSave('Video', ({ original, object, log }) => {
           await Promise.all(fileNames.map(async fileName => {
             if (![manifestFileName, object.get('input').name()].includes(fileName)) {
               const fileBuffer = await fs.readFile(`${tempDirUri}/${fileName}`);
-              const file = new Parse.File(fileName, [...fileBuffer]);
+              const file = new Parse.File(fileName, [...fileBuffer], 'video/MP2T');
               await file.save();
               fileNamesMap[fileName] = file.name();
               let hlsChunks = object.get('hlsChunks');
@@ -69,7 +69,7 @@ Parse.Cloud.afterSave('Video', ({ original, object, log }) => {
             manifestFileText = manifestFileText.replace(fileName, fileNamesMap[fileName]);
           });
 
-          const hlsManifest = new Parse.File(manifestFileName, [...Buffer.from(manifestFileText)]);
+          const hlsManifest = new Parse.File(manifestFileName, [...Buffer.from(manifestFileText)], 'application/x-mpegURL');
           await hlsManifest.save();
 
           object.set('hlsManifest', hlsManifest);
